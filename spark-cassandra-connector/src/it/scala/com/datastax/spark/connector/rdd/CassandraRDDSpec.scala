@@ -7,6 +7,7 @@ import com.datastax.spark.connector._
 import com.datastax.spark.connector.cql.CassandraConnector
 import com.datastax.spark.connector.mapper.DefaultColumnMapper
 import com.datastax.spark.connector.types.{CassandraOption, TypeConverter}
+import com.datastax.spark.connector.writer.{TimestampOption, WriteConf}
 import org.joda.time.{DateTime, LocalDate}
 
 import scala.collection.JavaConversions._
@@ -1103,6 +1104,23 @@ class CassandraRDDSpec extends SparkCassandraITFlatSpecBase {
     results should have size 3
 
     results should contain theSameElementsAs Seq(
+      (10, 10, "1010"),
+      (10, 11, "1011"),
+      (10, 12, "1012"))
+
+    // Try to delete rows older than year 2000.
+    sc.cassandraTable(ks, "delete_wide_rows1").where("key = 10")
+      .deleteFromCassandra(ks, "delete_wide_rows1",
+        writeConf = WriteConf(timestamp = TimestampOption.constant(new DateTime(2000, 1, 1, 7, 8, 8, 10))))
+
+    val results1 = sc
+      .cassandraTable[(Int, Int, String)](ks, "delete_wide_rows1")
+      .select("key", "group", "value")
+      .collect()
+
+    results1 should have size 3
+
+    results1 should contain theSameElementsAs Seq(
       (10, 10, "1010"),
       (10, 11, "1011"),
       (10, 12, "1012"))
