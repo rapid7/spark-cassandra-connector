@@ -70,8 +70,12 @@ class TableWriter[T] private (
     def quotedColumnNames(columns: Seq[ColumnDef]) = columns.map(_.columnName).map(quote)
     val deleteColumnsClause = deleteColumnNames.map(quote).mkString(", ")
     val whereClause = quotedColumnNames(primaryKey).map(c => s"$c = :$c").mkString(" AND ")
+    val timestampClause = writeConf.timestamp.value match {
+        case StaticWriteOptionValue(ts) => s"USING TIMESTAMP $ts"
+        case _ => ""
+    }
 
-    s"DELETE ${deleteColumnsClause} FROM ${quote(keyspaceName)}.${quote(tableName)} WHERE $whereClause"
+    s"DELETE ${deleteColumnsClause} FROM ${quote(keyspaceName)}.${quote(tableName)} $timestampClause WHERE $whereClause"
   }
   private lazy val queryTemplateUsingUpdate: String = {
     val (primaryKey, regularColumns) = columns.partition(_.isPrimaryKeyColumn)
